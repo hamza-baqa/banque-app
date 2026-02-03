@@ -1,0 +1,104 @@
+@inherits LayoutComponentBase
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<div class="page">
+    <!-- Barre de navigation supérieure -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-eurobank fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <img src="/images/logo-eurobank.svg" alt="EuroBank" height="40" class="me-2" onerror="this.style.display='none'" />
+                <span class="fw-bold">EuroBank</span>
+            </a>
+            
+            <AuthorizeView>
+                <Authorized>
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    
+                    <div class="collapse navbar-collapse" id="navbarNav">
+                        <ul class="navbar-nav me-auto">
+                            <li class="nav-item">
+                                <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+                                    <i class="fas fa-home me-1"></i> Accueil
+                                </NavLink>
+                            </li>
+                            <li class="nav-item">
+                                <NavLink class="nav-link" href="/comptes">
+                                    <i class="fas fa-wallet me-1"></i> Mes Comptes
+                                </NavLink>
+                            </li>
+                            <li class="nav-item">
+                                <NavLink class="nav-link" href="/virements">
+                                    <i class="fas fa-exchange-alt me-1"></i> Virements
+                                </NavLink>
+                            </li>
+                            <li class="nav-item">
+                                <NavLink class="nav-link" href="/cartes">
+                                    <i class="fas fa-credit-card me-1"></i> Cartes
+                                </NavLink>
+                            </li>
+                            <li class="nav-item">
+                                <NavLink class="nav-link" href="/historique">
+                                    <i class="fas fa-history me-1"></i> Historique
+                                </NavLink>
+                            </li>
+                        </ul>
+                        
+                        <ul class="navbar-nav">
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" id="userDropdown" 
+                                   data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-user-circle me-1"></i>
+                                    @context.User.Identity?.Name
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="/profil"><i class="fas fa-user me-2"></i>Mon Profil</a></li>
+                                    <li><a class="dropdown-item" href="/parametres"><i class="fas fa-cog me-2"></i>Paramètres</a></li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                    <li><a class="dropdown-item text-danger" href="#" @onclick="Logout"><i class="fas fa-sign-out-alt me-2"></i>Déconnexion</a></li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </Authorized>
+            </AuthorizeView>
+        </div>
+    </nav>
+    
+    <!-- Contenu principal -->
+    <main class="main-content">
+        <div class="container-fluid py-4">
+            @Body
+        </div>
+    </main>
+    
+    <!-- Pied de page -->
+    <footer class="footer bg-light py-3 mt-auto">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <small class="text-muted">
+                        © @DateTime.Now.Year EuroBank France - Tous droits réservés
+                    </small>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <small class="text-muted">
+                        <a href="/mentions-legales" class="text-muted me-3">Mentions légales</a>
+                        <a href="/confidentialite" class="text-muted me-3">Confidentialité</a>
+                        <a href="/contact" class="text-muted">Contact</a>
+                    </small>
+                </div>
+            </div>
+        </div>
+    </footer>
+</div>
+
+@code {
+    private async Task Logout()
+    {
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/login", true);
+    }
+}
