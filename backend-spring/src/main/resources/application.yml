@@ -16,6 +16,11 @@ spring:
       ddl-auto: update
     show-sql: false
     defer-datasource-initialization: true
+
+  # Initialisation SQL (disabled - using DataLoader instead)
+  sql:
+    init:
+      mode: never
     properties:
       hibernate:
         format_sql: true
@@ -52,7 +57,7 @@ spring:
 
 # Configuration du serveur
 server:
-  port: 8080
+  port: 8081
   servlet:
     context-path: /eurobank
   error:

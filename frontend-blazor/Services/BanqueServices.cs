@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Components.Authorization;
 using Blazored.LocalStorage;
 using EuroBank.Web.Models;
@@ -22,12 +23,17 @@ public class AuthService : IAuthService
     private readonly HttpClient _httpClient;
     private readonly ILocalStorageService _localStorage;
     private readonly AuthenticationStateProvider _authStateProvider;
-    
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
+    };
+
     private const string TokenKey = "authToken";
     private const string RefreshTokenKey = "refreshToken";
     private const string UserKey = "currentUser";
 
-    public AuthService(HttpClient httpClient, 
+    public AuthService(HttpClient httpClient,
                        ILocalStorageService localStorage,
                        AuthenticationStateProvider authStateProvider)
     {
@@ -38,26 +44,26 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponse?> LoginAsync(LoginRequest request)
     {
-        var response = await _httpClient.PostAsJsonAsync("/api/v1/auth/login", request);
-        
+        var response = await _httpClient.PostAsJsonAsync("api/v1/auth/login", request, _jsonOptions);
+
         if (!response.IsSuccessStatusCode)
         {
-            var errorResponse = await response.Content.ReadFromJsonAsync<ApiResponse<object>>();
+            var errorResponse = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(_jsonOptions);
             throw new Exception(errorResponse?.Message ?? "Erreur de connexion");
         }
-        
-        var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>();
-        
+
+        var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>(_jsonOptions);
+
         if (apiResponse?.Data != null && !apiResponse.Data.DeuxFacteursRequis)
         {
             await _localStorage.SetItemAsync(TokenKey, apiResponse.Data.AccessToken);
             await _localStorage.SetItemAsync(RefreshTokenKey, apiResponse.Data.RefreshToken);
             await _localStorage.SetItemAsync(UserKey, apiResponse.Data.Utilisateur);
-            
+
             ((CustomAuthStateProvider)_authStateProvider).NotifyUserAuthentication(apiResponse.Data.AccessToken);
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiResponse.Data.AccessToken);
         }
-        
+
         return apiResponse?.Data;
     }
 
@@ -69,7 +75,7 @@ public class AuthService : IAuthService
             if (!string.IsNullOrEmpty(token))
             {
                 _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-                await _httpClient.PostAsync("/api/v1/auth/logout", null);
+                await _httpClient.PostAsync("api/v1/auth/logout", null);
             }
         }
         catch { }
@@ -86,20 +92,20 @@ public class AuthService : IAuthService
     {
         var refreshToken = await _localStorage.GetItemAsync<string>(RefreshTokenKey);
         if (string.IsNullOrEmpty(refreshToken)) return false;
-        
+
         _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", refreshToken);
-        var response = await _httpClient.PostAsync("/api/v1/auth/refresh", null);
-        
+        var response = await _httpClient.PostAsync("api/v1/auth/refresh", null);
+
         if (!response.IsSuccessStatusCode) return false;
-        
-        var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>();
+
+        var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<LoginResponse>>(_jsonOptions);
         if (apiResponse?.Data != null)
         {
             await _localStorage.SetItemAsync(TokenKey, apiResponse.Data.AccessToken);
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiResponse.Data.AccessToken);
             return true;
         }
-        
+
         return false;
     }
 
@@ -195,14 +201,14 @@ public class CompteService : ICompteService
     public async Task<CompteDto?> GetCompteAsync(string iban)
     {
         await SetAuthHeaderAsync();
-        var response = await _httpClient.GetFromJsonAsync<ApiResponse<CompteDto>>($"/api/v1/comptes/{iban}");
+        var response = await _httpClient.GetFromJsonAsync<ApiResponse<CompteDto>>($"api/v1/comptes/{iban}");
         return response?.Data;
     }
 
     public async Task<List<CompteResumeDto>> GetComptesClientAsync(long clientId)
     {
         await SetAuthHeaderAsync();
-        var response = await _httpClient.GetFromJsonAsync<ApiResponse<List<CompteResumeDto>>>($"/api/v1/comptes/client/{clientId}");
+        var response = await _httpClient.GetFromJsonAsync<ApiResponse<List<CompteResumeDto>>>($"api/v1/comptes/client/{clientId}");
         return response?.Data ?? new List<CompteResumeDto>();
     }
 
@@ -245,7 +251,7 @@ public class VirementService : IVirementService
     {
         await SetAuthHeaderAsync();
         
-        var endpoint = request.Instantane ? "/api/v1/virements/instantane" : "/api/v1/virements";
+        var endpoint = request.Instantane ? "api/v1/virements/instantane" : "api/v1/virements";
         var response = await _httpClient.PostAsJsonAsync(endpoint, request);
         
         if (!response.IsSuccessStatusCode)
@@ -261,7 +267,7 @@ public class VirementService : IVirementService
     public async Task<PageResponse<TransactionDto>> GetHistoriqueAsync(HistoriqueRequest request)
     {
         await SetAuthHeaderAsync();
-        var response = await _httpClient.PostAsJsonAsync("/api/v1/transactions/historique", request);
+        var response = await _httpClient.PostAsJsonAsync("api/v1/transactions/historique", request);
         var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<PageResponse<TransactionDto>>>();
         return apiResponse?.Data ?? new PageResponse<TransactionDto>();
     }
@@ -302,21 +308,21 @@ public class CarteService : ICarteService
     public async Task<List<CarteDto>> GetCartesCompteAsync(long compteId)
     {
         await SetAuthHeaderAsync();
-        var response = await _httpClient.GetFromJsonAsync<ApiResponse<List<CarteDto>>>($"/api/v1/cartes/compte/{compteId}");
+        var response = await _httpClient.GetFromJsonAsync<ApiResponse<List<CarteDto>>>($"api/v1/cartes/compte/{compteId}");
         return response?.Data ?? new List<CarteDto>();
     }
 
     public async Task<CarteDto?> GetCarteAsync(long id)
     {
         await SetAuthHeaderAsync();
-        var response = await _httpClient.GetFromJsonAsync<ApiResponse<CarteDto>>($"/api/v1/cartes/{id}");
+        var response = await _httpClient.GetFromJsonAsync<ApiResponse<CarteDto>>($"api/v1/cartes/{id}");
         return response?.Data;
     }
 
     public async Task<CarteDto?> ModifierOptionsAsync(long id, CarteOptionsRequest options)
     {
         await SetAuthHeaderAsync();
-        var response = await _httpClient.PutAsJsonAsync($"/api/v1/cartes/{id}/options", options);
+        var response = await _httpClient.PutAsJsonAsync($"api/v1/cartes/{id}/options", options);
         var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<CarteDto>>();
         return apiResponse?.Data;
     }
@@ -324,7 +330,7 @@ public class CarteService : ICarteService
     public async Task<CarteDto?> BloquerCarteAsync(long id)
     {
         await SetAuthHeaderAsync();
-        var response = await _httpClient.PostAsync($"/api/v1/cartes/{id}/bloquer", null);
+        var response = await _httpClient.PostAsync($"api/v1/cartes/{id}/bloquer", null);
         var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<CarteDto>>();
         return apiResponse?.Data;
     }
@@ -332,7 +338,7 @@ public class CarteService : ICarteService
     public async Task<CarteDto?> DebloquerCarteAsync(long id)
     {
         await SetAuthHeaderAsync();
-        var response = await _httpClient.PostAsync($"/api/v1/cartes/{id}/debloquer", null);
+        var response = await _httpClient.PostAsync($"api/v1/cartes/{id}/debloquer", null);
         var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<CarteDto>>();
         return apiResponse?.Data;
     }
@@ -340,7 +346,7 @@ public class CarteService : ICarteService
     public async Task<CarteDto?> MettreEnOppositionAsync(long id, OppositionCarteRequest request)
     {
         await SetAuthHeaderAsync();
-        var response = await _httpClient.PostAsJsonAsync($"/api/v1/cartes/{id}/opposition", request);
+        var response = await _httpClient.PostAsJsonAsync($"api/v1/cartes/{id}/opposition", request);
         var apiResponse = await response.Content.ReadFromJsonAsync<ApiResponse<CarteDto>>();
         return apiResponse?.Data;
     }
@@ -377,14 +383,14 @@ public class ClientService : IClientService
     public async Task<ClientDto?> GetClientAsync(long id)
     {
         await SetAuthHeaderAsync();
-        var response = await _httpClient.GetFromJsonAsync<ApiResponse<ClientDto>>($"/api/v1/clients/{id}");
+        var response = await _httpClient.GetFromJsonAsync<ApiResponse<ClientDto>>($"api/v1/clients/{id}");
         return response?.Data;
     }
 
     public async Task<ClientDto?> GetClientByNumeroAsync(string numeroClient)
     {
         await SetAuthHeaderAsync();
-        var response = await _httpClient.GetFromJsonAsync<ApiResponse<ClientDto>>($"/api/v1/clients/numero/{numeroClient}");
+        var response = await _httpClient.GetFromJsonAsync<ApiResponse<ClientDto>>($"api/v1/clients/numero/{numeroClient}");
         return response?.Data;
     }
 }

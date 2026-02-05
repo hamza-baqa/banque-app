@@ -5,18 +5,19 @@ using Blazored.LocalStorage;
 using Blazored.Toast;
 using EuroBank.Web;
 using EuroBank.Web.Services;
+using System.Text.Json;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 // Configuration de l'URL de l'API
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:8080/eurobank";
+var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:8081/eurobank/";
 
 // Configuration HttpClient pour l'API
-builder.Services.AddScoped(sp => new HttpClient 
-{ 
-    BaseAddress = new Uri(apiBaseUrl) 
+builder.Services.AddScoped(sp => new HttpClient
+{
+    BaseAddress = new Uri(apiBaseUrl)
 });
 
 // Services Blazored

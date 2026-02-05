@@ -1,0 +1,43 @@
+# Build artifacts
+target/
+bin/
+obj/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*~
+
+# .NET
+*.user
+*.suo
+*.cache
+project.lock.json
+
+# Java
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# H2 Database
+*.db
+*.mv.db
+*.trace.db
+
+# Environment
+.env
+.env.local
