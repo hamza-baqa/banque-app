@@ -1,0 +1,366 @@
+/* ============================================
+   EuroBank - Styles Globaux
+   ============================================ */
+
+:root {
+    /* Couleurs principales EuroBank */
+    --eb-primary: #1a365d;
+    --eb-primary-light: #2c5282;
+    --eb-primary-dark: #0d1b2a;
+    --eb-secondary: #3182ce;
+    --eb-accent: #38a169;
+    --eb-warning: #d69e2e;
+    --eb-danger: #e53e3e;
+    
+    /* Couleurs de fond */
+    --eb-bg-light: #f7fafc;
+    --eb-bg-white: #ffffff;
+    
+    /* Typographie */
+    --eb-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    font-family: var(--eb-font-family);
+    font-size: 14px;
+    background-color: var(--eb-bg-light);
+    color: #1a202c;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+/* ============================================
+   Layout Principal
+   ============================================ */
+
+.page {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.main-content {
+    flex: 1;
+    padding-top: 76px; /* Hauteur de la navbar */
+}
+
+/* ============================================
+   Navigation
+   ============================================ */
+
+.navbar {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.bg-eurobank {
+    background: linear-gradient(135deg, var(--eb-primary) 0%, var(--eb-primary-light) 100%);
+}
+
+.navbar-brand {
+    font-size: 1.5rem;
+    letter-spacing: -0.5px;
+}
+
+.nav-link {
+    font-weight: 500;
+    padding: 0.75rem 1rem !important;
+    transition: all 0.2s ease;
+}
+
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+}
+
+.nav-link.active {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+}
+
+/* ============================================
+   Cartes et Conteneurs
+   ============================================ */
+
+.card {
+    border-radius: 12px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.card-header {
+    border-radius: 12px 12px 0 0 !important;
+}
+
+.shadow-sm {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ============================================
+   Boutons
+   ============================================ */
+
+.btn {
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--eb-primary-light) 0%, var(--eb-secondary) 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, var(--eb-primary) 0%, var(--eb-primary-light) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(26, 54, 93, 0.3);
+}
+
+.btn-outline-primary {
+    border-color: var(--eb-primary);
+    color: var(--eb-primary);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--eb-primary);
+    border-color: var(--eb-primary);
+}
+
+/* ============================================
+   Formulaires
+   ============================================ */
+
+.form-control, .form-select {
+    border-radius: 8px;
+    border: 1.5px solid #e2e8f0;
+    padding: 0.75rem 1rem;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--eb-secondary);
+    box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.2);
+}
+
+.form-control-lg, .form-select-lg {
+    padding: 0.875rem 1.25rem;
+    font-size: 1rem;
+}
+
+.input-group-text {
+    background-color: #f7fafc;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+}
+
+.form-label {
+    font-weight: 500;
+    color: #4a5568;
+    margin-bottom: 0.5rem;
+}
+
+/* ============================================
+   Tableaux
+   ============================================ */
+
+.table {
+    margin-bottom: 0;
+}
+
+.table thead th {
+    font-weight: 600;
+    color: #4a5568;
+    border-bottom: 2px solid #e2e8f0;
+    padding: 1rem;
+}
+
+.table tbody td {
+    padding: 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f7fafc;
+}
+
+/* ============================================
+   Badges et Tags
+   ============================================ */
+
+.badge {
+    font-weight: 500;
+    padding: 0.5em 0.75em;
+    border-radius: 6px;
+}
+
+.bg-success-subtle {
+    background-color: #c6f6d5 !important;
+}
+
+.bg-danger-subtle {
+    background-color: #fed7d7 !important;
+}
+
+.bg-warning-subtle {
+    background-color: #fefcbf !important;
+}
+
+.bg-info-subtle {
+    background-color: #bee3f8 !important;
+}
+
+.bg-primary-subtle {
+    background-color: #e2e8f0 !important;
+}
+
+.bg-secondary-subtle {
+    background-color: #f1f5f9 !important;
+}
+
+/* ============================================
+   Alertes
+   ============================================ */
+
+.alert {
+    border: none;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+}
+
+.alert-success {
+    background-color: #c6f6d5;
+    color: #22543d;
+}
+
+.alert-danger {
+    background-color: #fed7d7;
+    color: #742a2a;
+}
+
+.alert-warning {
+    background-color: #fefcbf;
+    color: #744210;
+}
+
+.alert-info {
+    background-color: #bee3f8;
+    color: #2a4365;
+}
+
+/* ============================================
+   Utilitaires
+   ============================================ */
+
+.text-primary {
+    color: var(--eb-primary) !important;
+}
+
+.text-success {
+    color: var(--eb-accent) !important;
+}
+
+.text-danger {
+    color: var(--eb-danger) !important;
+}
+
+.rounded-3 {
+    border-radius: 12px !important;
+}
+
+.font-monospace {
+    font-family: 'Fira Code', 'Courier New', monospace;
+}
+
+/* ============================================
+   Footer
+   ============================================ */
+
+.footer {
+    background-color: #ffffff;
+    border-top: 1px solid #e2e8f0;
+}
+
+.footer a {
+    text-decoration: none;
+}
+
+.footer a:hover {
+    text-decoration: underline;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+
+@media (max-width: 768px) {
+    .main-content {
+        padding-top: 70px;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .welcome-banner {
+        padding: 1.5rem !important;
+    }
+    
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.card {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* ============================================
+   Spinner et États de chargement
+   ============================================ */
+
+.spinner-border {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.placeholder {
+    border-radius: 4px;
+}
+
+/* ============================================
+   Toast notifications
+   ============================================ */
+
+.success-toast {
+    background-color: var(--eb-accent) !important;
+}
+
+.error-toast {
+    background-color: var(--eb-danger) !important;
+}
+
+.warning-toast {
+    background-color: var(--eb-warning) !important;
+}
+
+.info-toast {
+    background-color: var(--eb-secondary) !important;
+}
