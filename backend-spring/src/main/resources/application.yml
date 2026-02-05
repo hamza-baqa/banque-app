@@ -1,0 +1,209 @@
+# ============================================
+# EuroBank Core Banking API - Configuration
+# ============================================
+
+spring:
+  application:
+    name: eurobank-api
+  
+  # Profil actif (dev par défaut)
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  
+  # Configuration JPA/Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    defer-datasource-initialization: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+  
+  # Configuration de la base de données H2 (développement)
+  datasource:
+    url: jdbc:h2:mem:eurobank;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+  
+  # Console H2 (développement uniquement)
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: false
+  
+  # Configuration Jackson
+  jackson:
+    date-format: yyyy-MM-dd'T'HH:mm:ss
+    time-zone: Europe/Paris
+    serialization:
+      write-dates-as-timestamps: false
+      indent-output: true
+    deserialization:
+      fail-on-unknown-properties: false
+
+# Configuration du serveur
+server:
+  port: 8080
+  servlet:
+    context-path: /eurobank
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Configuration JWT
+app:
+  jwt:
+    secret: ${JWT_SECRET:eurobank-secret-key-for-jwt-token-generation-must-be-at-least-256-bits-long}
+    access-token-expiration: 900000      # 15 minutes
+    refresh-token-expiration: 604800000  # 7 jours
+  
+  # Configuration banque
+  banque:
+    code: "30001"
+    bic: "EABORFRPP"
+    nom: "EuroBank France"
+  
+  # Limites et plafonds
+  limites:
+    virement:
+      max-montant-jour: 100000
+      max-montant-instantane: 15000
+      max-operations-jour: 10
+    carte:
+      plafond-paiement-defaut: 3000
+      plafond-retrait-defaut: 500
+
+# Configuration OpenAPI / Swagger
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+  info:
+    title: EuroBank API
+    description: API REST du système bancaire EuroBank
+    version: 1.0.0
+    contact:
+      name: EuroBank IT
+      email: it@eurobank.fr
+
+# Configuration des logs
+logging:
+  level:
+    root: INFO
+    com.banque.eurobank: DEBUG
+    org.springframework.security: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/eurobank-api.log
+
+# Configuration actuator (monitoring)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+---
+# ============================================
+# Profil de développement
+# ============================================
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+logging:
+  level:
+    com.banque.eurobank: DEBUG
+
+---
+# ============================================
+# Profil WebSphere / Production
+# ============================================
+spring:
+  config:
+    activate:
+      on-profile: websphere
+  
+  # Configuration Oracle pour WebSphere
+  datasource:
+    url: jdbc:oracle:thin:@//oracle-server:1521/EUROBANK
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: oracle.jdbc.OracleDriver
+    hikari:
+      connection-timeout: 30000
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 600000
+      max-lifetime: 1800000
+  
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.Oracle12cDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  
+  # Désactiver H2 console en production
+  h2:
+    console:
+      enabled: false
+
+# Configuration serveur WebSphere
+server:
+  port: 9080
+  servlet:
+    context-path: /eurobank
+
+# Logs production
+logging:
+  level:
+    root: WARN
+    com.banque.eurobank: INFO
+    org.springframework: WARN
+  file:
+    name: /var/log/eurobank/eurobank-api.log
+
+---
+# ============================================
+# Profil de test
+# ============================================
+spring:
+  config:
+    activate:
+      on-profile: test
+  
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+logging:
+  level:
+    root: WARN
+    com.banque.eurobank: DEBUG

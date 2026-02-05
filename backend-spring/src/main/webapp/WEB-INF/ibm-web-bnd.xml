@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Configuration de déploiement IBM WebSphere Application Server
+    EuroBank Core Banking API
+-->
+<web-bnd xmlns="http://websphere.ibm.com/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://websphere.ibm.com/xml/ns/javaee 
+         http://websphere.ibm.com/xml/ns/javaee/ibm-web-bnd_1_2.xsd"
+         version="1.2">
+    
+    <!-- Racine virtuelle de l'application -->
+    <virtual-host name="default_host"/>
+    
+</web-bnd>

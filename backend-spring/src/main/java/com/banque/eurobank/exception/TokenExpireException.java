@@ -1,0 +1,11 @@
+package com.banque.eurobank.exception;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+@ResponseStatus(HttpStatus.UNAUTHORIZED)
+public class TokenExpireException extends RuntimeException {
+    public TokenExpireException(String message) {
+        super(message);
+    }
+}
