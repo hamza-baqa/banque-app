@@ -1,8 +1,8 @@
-# 🏦 EuroBank - Application Bancaire Enterprise
+#  Bank App
 
 Application bancaire complète avec architecture enterprise moderne combinant un **frontend .NET Blazor** et un **backend Spring Boot** déployable sur **IBM WebSphere Application Server**.
 
-## 📋 Table des matières
+##  Table des matières
 
 - [Architecture](#architecture)
 - [Technologies](#technologies)
@@ -15,7 +15,7 @@ Application bancaire complète avec architecture enterprise moderne combinant un
 
 ---
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -70,7 +70,7 @@ Application bancaire complète avec architecture enterprise moderne combinant un
 
 ---
 
-## 🛠️ Technologies
+##  Technologies
 
 ### Backend (Spring Boot)
 | Technologie | Version | Description |
@@ -95,7 +95,7 @@ Application bancaire complète avec architecture enterprise moderne combinant un
 
 ---
 
-## 📁 Structure du projet
+##  Structure du projet
 
 ```
 banque-app/
@@ -163,7 +163,7 @@ banque-app/
 
 ---
 
-## 🚀 Installation
+##  Installation
 
 ### Prérequis
 - Java JDK 11+
@@ -282,7 +282,7 @@ Authorization: Bearer <jwt_token>
 
 ---
 
-## 🔒 Sécurité
+##  Sécurité
 
 ### Fonctionnalités de sécurité
 - ✅ Authentification JWT avec refresh token
@@ -301,16 +301,9 @@ Authorization: Bearer <jwt_token>
 | marie.martin | Demo@2024 | CLIENT (2FA) |
 | conseiller01 | Conseiller@2024 | CONSEILLER |
 | admin | Admin@2024 | ADMIN |
-
 ---
 
-## 📜 Licence
-
-Copyright © 2024 EuroBank France - Tous droits réservés.
-
----
-
-## 👥 Équipe
+##  Équipe
 
 Développé par l'équipe IT EuroBank
 - Architecture: Département Architecture SI
