@@ -8,6 +8,8 @@ Application bancaire complète avec architecture enterprise moderne combinant un
 - [Technologies](#technologies)
 - [Structure du projet](#structure-du-projet)
 - [Installation](#installation)
+  - [Démarrage rapide](#-démarrage-rapide-recommandé)
+  - [Installation manuelle](#installation-manuelle-alternative)
 - [Configuration](#configuration)
 - [Déploiement WebSphere](#déploiement-websphere)
 - [API Documentation](#api-documentation)
@@ -171,11 +173,49 @@ banque-app/
 - .NET SDK 7.0+
 - Node.js 18+ (optionnel, pour les outils)
 
-### Backend Spring Boot
+### 🚀 Démarrage rapide (Recommandé)
+
+Le moyen le plus simple de lancer l'application complète :
+
+```bash
+# Cloner le repository
+git clone https://github.com/hamza-baqa/banque-app.git
+cd banque-app
+
+# Lancer l'application complète (backend + frontend)
+./start.sh
+```
+
+Le script `start.sh` va automatiquement :
+- ✅ Vérifier les prérequis (Java, Maven, .NET SDK)
+- ✅ Compiler et lancer le backend Spring Boot
+- ✅ Compiler et lancer le frontend Blazor
+- ✅ Afficher les URLs d'accès et les credentials de test
+- ✅ Gérer l'arrêt propre avec Ctrl+C
+
+**Accès à l'application :**
+- **Frontend** : https://localhost:5001
+- **Backend API** : http://localhost:8081/eurobank
+- **Swagger UI** : http://localhost:8081/eurobank/swagger-ui.html
+- **Console H2** : http://localhost:8081/eurobank/h2-console
+
+**Arrêter l'application :**
+```bash
+# Appuyer sur Ctrl+C, ou
+./start.sh stop
+```
+
+---
+
+### Installation manuelle (Alternative)
+
+Si vous préférez lancer les services individuellement :
+
+#### Backend Spring Boot
 
 ```bash
 # Naviguer vers le backend
-cd banque-app/backend-spring
+cd backend-spring
 
 # Compiler le projet
 mvn clean package
@@ -183,16 +223,16 @@ mvn clean package
 # Lancer en mode développement
 mvn spring-boot:run
 
-# L'API sera disponible sur http://localhost:8080/eurobank
-# Swagger UI: http://localhost:8080/eurobank/swagger-ui.html
-# Console H2: http://localhost:8080/eurobank/h2-console
+# L'API sera disponible sur http://localhost:8081/eurobank
+# Swagger UI: http://localhost:8081/eurobank/swagger-ui.html
+# Console H2: http://localhost:8081/eurobank/h2-console
 ```
 
-### Frontend Blazor
+#### Frontend Blazor
 
 ```bash
 # Naviguer vers le frontend
-cd banque-app/frontend-blazor
+cd frontend-blazor
 
 # Restaurer les packages
 dotnet restore
