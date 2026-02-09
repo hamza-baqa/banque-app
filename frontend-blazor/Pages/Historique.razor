@@ -1,0 +1,1531 @@
+@page "/historique"
+@page "/historique/{iban}"
+@attribute [Authorize]
+@inject IVirementService VirementService
+@inject ICompteService CompteService
+@inject NavigationManager Navigation
+@inject IToastService ToastService
+
+<PageTitle>Historique des Transactions - EuroBank</PageTitle>
+
+<div class="historique-page">
+    <!-- En-tête de la page -->
+    <div class="page-header mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h1 class="h3 mb-2">
+                    <i class="fas fa-history me-2 text-primary"></i>
+                    Historique des Transactions
+                </h1>
+                <p class="text-muted mb-0">Consultez l'ensemble de vos opérations bancaires</p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <div class="d-flex justify-content-md-end gap-2 mt-3 mt-md-0">
+                    <button class="btn btn-outline-primary" @onclick="ExporterPDF" disabled="@(!transactions.Any())">
+                        <i class="fas fa-file-pdf me-1"></i> Exporter PDF
+                    </button>
+                    <button class="btn btn-outline-success" @onclick="ExporterExcel" disabled="@(!transactions.Any())">
+                        <i class="fas fa-file-excel me-1"></i> Exporter Excel
+                    </button>
+                    <button class="btn btn-primary" @onclick="Actualiser">
+                        <i class="fas fa-sync-alt me-1"></i> Actualiser
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistiques et résumé -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm stat-card">
+                <div class="card-body text-center">
+                    <div class="stat-icon bg-primary-subtle text-primary mb-2">
+                        <i class="fas fa-exchange-alt fa-2x"></i>
+                    </div>
+                    <h6 class="text-muted mb-1">Total transactions</h6>
+                    <h3 class="mb-0 text-primary">@totalTransactions</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm stat-card">
+                <div class="card-body text-center">
+                    <div class="stat-icon bg-success-subtle text-success mb-2">
+                        <i class="fas fa-arrow-down fa-2x"></i>
+                    </div>
+                    <h6 class="text-muted mb-1">Total crédits</h6>
+                    <h3 class="mb-0 text-success">+@totalCredits.ToString("N2") €</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm stat-card">
+                <div class="card-body text-center">
+                    <div class="stat-icon bg-danger-subtle text-danger mb-2">
+                        <i class="fas fa-arrow-up fa-2x"></i>
+                    </div>
+                    <h6 class="text-muted mb-1">Total débits</h6>
+                    <h3 class="mb-0 text-danger">-@totalDebits.ToString("N2") €</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm stat-card">
+                <div class="card-body text-center">
+                    <div class="stat-icon bg-info-subtle text-info mb-2">
+                        <i class="fas fa-balance-scale fa-2x"></i>
+                    </div>
+                    <h6 class="text-muted mb-1">Solde net</h6>
+                    <h3 class="mb-0 @(soldeNet >= 0 ? "text-success" : "text-danger")">
+                        @(soldeNet >= 0 ? "+" : "")@soldeNet.ToString("N2") €
+                    </h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtres avancés -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-0 py-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-filter me-2 text-primary"></i>
+                    Filtres de recherche
+                </h5>
+                <button class="btn btn-sm btn-link text-decoration-none" @onclick="ReinitialiserFiltres">
+                    <i class="fas fa-redo me-1"></i> Réinitialiser
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <!-- Compte -->
+                <div class="col-md-3">
+                    <label class="form-label">Compte</label>
+                    <select class="form-select" @bind="compteSelectionne" @bind:after="AppliquerFiltres">
+                        <option value="">Tous les comptes</option>
+                        @foreach (var compte in comptes)
+                        {
+                            <option value="@compte.Iban">@compte.Intitule</option>
+                        }
+                    </select>
+                </div>
+
+                <!-- Date de début -->
+                <div class="col-md-3">
+                    <label class="form-label">Date de début</label>
+                    <input type="date"
+                           class="form-control"
+                           @bind="dateDebut"
+                           @bind:after="AppliquerFiltres"
+                           max="@DateTime.Today.ToString("yyyy-MM-dd")">
+                </div>
+
+                <!-- Date de fin -->
+                <div class="col-md-3">
+                    <label class="form-label">Date de fin</label>
+                    <input type="date"
+                           class="form-control"
+                           @bind="dateFin"
+                           @bind:after="AppliquerFiltres"
+                           max="@DateTime.Today.ToString("yyyy-MM-dd")">
+                </div>
+
+                <!-- Type d'opération -->
+                <div class="col-md-3">
+                    <label class="form-label">Type d'opération</label>
+                    <select class="form-select" @bind="typeOperation" @bind:after="AppliquerFiltres">
+                        <option value="">Tous les types</option>
+                        <option value="VIREMENT_EMIS">Virement émis</option>
+                        <option value="VIREMENT_RECU">Virement reçu</option>
+                        <option value="VIREMENT_SEPA">Virement SEPA</option>
+                        <option value="VIREMENT_INSTANTANE">Virement instantané</option>
+                        <option value="PRELEVEMENT">Prélèvement</option>
+                        <option value="PAIEMENT_CARTE">Paiement carte</option>
+                        <option value="RETRAIT_DAB">Retrait DAB</option>
+                        <option value="DEPOT_ESPECES">Dépôt espèces</option>
+                        <option value="DEPOT_CHEQUE">Dépôt chèque</option>
+                        <option value="FRAIS_BANCAIRES">Frais bancaires</option>
+                    </select>
+                </div>
+
+                <!-- Recherche par mot-clé -->
+                <div class="col-md-6">
+                    <label class="form-label">Recherche</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-white">
+                            <i class="fas fa-search text-muted"></i>
+                        </span>
+                        <input type="text"
+                               class="form-control border-start-0"
+                               placeholder="Libellé, bénéficiaire, référence..."
+                               @bind="motCle"
+                               @bind:event="oninput"
+                               @onkeyup="AppliquerFiltres">
+                    </div>
+                </div>
+
+                <!-- Montant min -->
+                <div class="col-md-3">
+                    <label class="form-label">Montant minimum</label>
+                    <div class="input-group">
+                        <input type="number"
+                               class="form-control"
+                               @bind="montantMin"
+                               @bind:after="AppliquerFiltres"
+                               min="0"
+                               step="0.01"
+                               placeholder="0.00">
+                        <span class="input-group-text">€</span>
+                    </div>
+                </div>
+
+                <!-- Montant max -->
+                <div class="col-md-3">
+                    <label class="form-label">Montant maximum</label>
+                    <div class="input-group">
+                        <input type="number"
+                               class="form-control"
+                               @bind="montantMax"
+                               @bind:after="AppliquerFiltres"
+                               min="0"
+                               step="0.01"
+                               placeholder="0.00">
+                        <span class="input-group-text">€</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtres rapides -->
+            <div class="mt-3">
+                <label class="form-label">Périodes rapides:</label>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-sm btn-outline-primary" @onclick='() => AppliquerPeriodeRapide(7)'>
+                        7 derniers jours
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" @onclick='() => AppliquerPeriodeRapide(30)'>
+                        30 derniers jours
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" @onclick='() => AppliquerPeriodeRapide(90)'>
+                        3 derniers mois
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" @onclick="AppliquerMoisEnCours">
+                        Mois en cours
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" @onclick="AppliquerMoisPrecedent">
+                        Mois précédent
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary" @onclick="AppliquerAnneeEnCours">
+                        Année en cours
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Options d'affichage -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body py-2">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="text-muted small">Affichage:</span>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button"
+                                    class="btn @(vueActuelle == "liste" ? "btn-primary" : "btn-outline-primary")"
+                                    @onclick='() => vueActuelle = "liste"'>
+                                <i class="fas fa-list"></i> Liste
+                            </button>
+                            <button type="button"
+                                    class="btn @(vueActuelle == "cartes" ? "btn-primary" : "btn-outline-primary")"
+                                    @onclick='() => vueActuelle = "cartes"'>
+                                <i class="fas fa-th"></i> Cartes
+                            </button>
+                            <button type="button"
+                                    class="btn @(vueActuelle == "graphique" ? "btn-primary" : "btn-outline-primary")"
+                                    @onclick='() => vueActuelle = "graphique"'>
+                                <i class="fas fa-chart-bar"></i> Graphique
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 text-md-end mt-2 mt-md-0">
+                    <div class="d-flex justify-content-md-end align-items-center gap-3">
+                        <span class="text-muted small">Trier par:</span>
+                        <select class="form-select form-select-sm" style="width: auto;" @bind="triActuel" @bind:after="AppliquerTri">
+                            <option value="date-desc">Date (plus récent)</option>
+                            <option value="date-asc">Date (plus ancien)</option>
+                            <option value="montant-desc">Montant (décroissant)</option>
+                            <option value="montant-asc">Montant (croissant)</option>
+                            <option value="libelle">Libellé (A-Z)</option>
+                        </select>
+                        <select class="form-select form-select-sm" style="width: auto;" @bind="taillePage" @bind:after="AppliquerFiltres">
+                            <option value="10">10 par page</option>
+                            <option value="20">20 par page</option>
+                            <option value="50">50 par page</option>
+                            <option value="100">100 par page</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Affichage des transactions -->
+    @if (isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Chargement...</span>
+            </div>
+            <p class="text-muted mt-3">Chargement des transactions...</p>
+        </div>
+    }
+    else if (!transactionsFiltrees.Any())
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                <h5>Aucune transaction trouvée</h5>
+                <p class="text-muted">Aucune transaction ne correspond à vos critères de recherche</p>
+                <button class="btn btn-primary" @onclick="ReinitialiserFiltres">
+                    <i class="fas fa-redo me-2"></i> Réinitialiser les filtres
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        @if (vueActuelle == "liste")
+        {
+            <!-- Vue Liste -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 transactions-table">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width: 100px;">Date</th>
+                                    <th style="width: 120px;">Type</th>
+                                    <th>Libellé</th>
+                                    <th style="width: 150px;">Bénéficiaire</th>
+                                    <th style="width: 120px;" class="text-end">Montant</th>
+                                    <th style="width: 120px;" class="text-end">Solde après</th>
+                                    <th style="width: 80px;" class="text-center">Statut</th>
+                                    <th style="width: 60px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var transaction in transactionsPaginees)
+                                {
+                                    <tr class="transaction-row" @onclick='() => OuvrirDetailsTransaction(transaction)'>
+                                        <td>
+                                            <div class="fw-semibold small">@transaction.DateOperation.ToString("dd/MM/yyyy")</div>
+                                            <small class="text-muted">@transaction.DateOperation.ToString("HH:mm")</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary-subtle text-secondary">
+                                                <i class="fas fa-@GetTypeIcon(transaction.TypeOperation) me-1"></i>
+                                                @GetTypeLibelleCourt(transaction.TypeOperation)
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="fw-semibold">@transaction.Libelle</div>
+                                            @if (!string.IsNullOrEmpty(transaction.LibelleComplement))
+                                            {
+                                                <small class="text-muted">@transaction.LibelleComplement</small>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (!string.IsNullOrEmpty(transaction.NomBeneficiaire))
+                                            {
+                                                <span class="small">@transaction.NomBeneficiaire</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted small">-</span>
+                                            }
+                                        </td>
+                                        <td class="text-end">
+                                            <span class="fw-bold fs-6 @(transaction.IsCredit ? "text-success" : "text-danger")">
+                                                @transaction.MontantFormate
+                                            </span>
+                                        </td>
+                                        <td class="text-end">
+                                            <span class="small text-muted">@transaction.SoldeApres.ToString("N2") €</span>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-@GetStatutColor(transaction.Statut)">
+                                                @GetStatutLibelle(transaction.Statut)
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <button class="btn btn-sm btn-link text-primary"
+                                                    @onclick:stopPropagation="true"
+                                                    @onclick='() => OuvrirDetailsTransaction(transaction)'>
+                                                <i class="fas fa-chevron-right"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+        else if (vueActuelle == "cartes")
+        {
+            <!-- Vue Cartes -->
+            <div class="row g-3">
+                @foreach (var transaction in transactionsPaginees)
+                {
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border-0 shadow-sm transaction-card h-100" @onclick='() => OuvrirDetailsTransaction(transaction)'>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div class="transaction-icon @(transaction.IsCredit ? "bg-success-subtle text-success" : "bg-danger-subtle text-danger")">
+                                        <i class="fas fa-@GetTypeIcon(transaction.TypeOperation)"></i>
+                                    </div>
+                                    <span class="badge bg-@GetStatutColor(transaction.Statut)">
+                                        @GetStatutLibelle(transaction.Statut)
+                                    </span>
+                                </div>
+                                <h6 class="mb-2">@transaction.Libelle</h6>
+                                <p class="text-muted small mb-2">
+                                    @transaction.TypeOperationLibelle
+                                </p>
+                                @if (!string.IsNullOrEmpty(transaction.NomBeneficiaire))
+                                {
+                                    <p class="text-muted small mb-2">
+                                        <i class="fas fa-user me-1"></i>@transaction.NomBeneficiaire
+                                    </p>
+                                }
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <small class="text-muted">
+                                        <i class="fas fa-calendar me-1"></i>
+                                        @transaction.DateOperation.ToString("dd/MM/yyyy HH:mm")
+                                    </small>
+                                    <h5 class="mb-0 @(transaction.IsCredit ? "text-success" : "text-danger")">
+                                        @transaction.MontantFormate
+                                    </h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else if (vueActuelle == "graphique")
+        {
+            <!-- Vue Graphique -->
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white border-0 py-3">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-line me-2 text-primary"></i>
+                                Évolution du solde
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-placeholder">
+                                <i class="fas fa-chart-area fa-4x text-muted mb-3"></i>
+                                <p class="text-muted">Graphique d'évolution du solde</p>
+                                <small class="text-muted">(Nécessite une bibliothèque de graphiques comme Chart.js)</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card border-0 shadow-sm mb-3">
+                        <div class="card-header bg-white border-0 py-3">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-pie me-2 text-primary"></i>
+                                Répartition
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-placeholder-small">
+                                <i class="fas fa-chart-pie fa-3x text-muted mb-2"></i>
+                                <p class="small text-muted mb-0">Répartition par type</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white border-0 py-3">
+                            <h5 class="mb-0">Top catégories</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled mb-0">
+                                @foreach (var type in transactionsFiltrees.GroupBy(t => t.TypeOperation).OrderByDescending(g => g.Count()).Take(5))
+                                {
+                                    <li class="mb-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="small">@GetTypeLibelle(type.Key)</span>
+                                            <span class="badge bg-primary">@type.Count()</span>
+                                        </div>
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- Pagination -->
+        @if (totalPages > 1)
+        {
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-body py-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <p class="text-muted small mb-0">
+                                Affichage de @((pageActuelle * taillePage) + 1) à @Math.Min((pageActuelle + 1) * taillePage, transactionsFiltrees.Count)
+                                sur @transactionsFiltrees.Count transactions
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <nav>
+                                <ul class="pagination pagination-sm justify-content-md-end mb-0">
+                                    <li class="page-item @(pageActuelle == 0 ? "disabled" : "")">
+                                        <button class="page-link" @onclick='() => ChangerPage(0)' disabled="@(pageActuelle == 0)">
+                                            <i class="fas fa-angle-double-left"></i>
+                                        </button>
+                                    </li>
+                                    <li class="page-item @(pageActuelle == 0 ? "disabled" : "")">
+                                        <button class="page-link" @onclick='() => ChangerPage(pageActuelle - 1)' disabled="@(pageActuelle == 0)">
+                                            <i class="fas fa-angle-left"></i>
+                                        </button>
+                                    </li>
+
+                                    @for (int i = Math.Max(0, pageActuelle - 2); i <= Math.Min(totalPages - 1, pageActuelle + 2); i++)
+                                    {
+                                        var page = i;
+                                        <li class="page-item @(page == pageActuelle ? "active" : "")">
+                                            <button class="page-link" @onclick='() => ChangerPage(page)'>
+                                                @(page + 1)
+                                            </button>
+                                        </li>
+                                    }
+
+                                    <li class="page-item @(pageActuelle >= totalPages - 1 ? "disabled" : "")">
+                                        <button class="page-link" @onclick='() => ChangerPage(pageActuelle + 1)' disabled="@(pageActuelle >= totalPages - 1)">
+                                            <i class="fas fa-angle-right"></i>
+                                        </button>
+                                    </li>
+                                    <li class="page-item @(pageActuelle >= totalPages - 1 ? "disabled" : "")">
+                                        <button class="page-link" @onclick='() => ChangerPage(totalPages - 1)' disabled="@(pageActuelle >= totalPages - 1)">
+                                            <i class="fas fa-angle-double-right"></i>
+                                        </button>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<!-- Modal Détails Transaction -->
+@if (afficherModalDetails && transactionSelectionnee != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-receipt me-2"></i>
+                        Détails de la transaction
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="FermerModalDetails"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="detail-item">
+                                <label class="small text-muted">Référence</label>
+                                <p class="fw-semibold mb-0">@transactionSelectionnee.Reference</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="detail-item">
+                                <label class="small text-muted">Statut</label>
+                                <p class="mb-0">
+                                    <span class="badge bg-@GetStatutColor(transactionSelectionnee.Statut)">
+                                        @GetStatutLibelle(transactionSelectionnee.Statut)
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <hr>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="detail-item">
+                                <label class="small text-muted">Type d'opération</label>
+                                <p class="mb-0">@transactionSelectionnee.TypeOperationLibelle</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="detail-item">
+                                <label class="small text-muted">Nature</label>
+                                <p class="mb-0">@(transactionSelectionnee.NatureOperation ?? "-")</p>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="detail-item">
+                                <label class="small text-muted">Libellé</label>
+                                <p class="fw-semibold mb-0">@transactionSelectionnee.Libelle</p>
+                                @if (!string.IsNullOrEmpty(transactionSelectionnee.LibelleComplement))
+                                {
+                                    <p class="text-muted small mb-0">@transactionSelectionnee.LibelleComplement</p>
+                                }
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <hr>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="detail-item">
+                                <label class="small text-muted">Date d'opération</label>
+                                <p class="mb-0">@transactionSelectionnee.DateOperation.ToString("dd/MM/yyyy HH:mm")</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="detail-item">
+                                <label class="small text-muted">Date de valeur</label>
+                                <p class="mb-0">@transactionSelectionnee.DateValeur.ToString("dd/MM/yyyy")</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="detail-item">
+                                <label class="small text-muted">Devise</label>
+                                <p class="mb-0">@transactionSelectionnee.Devise</p>
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(transactionSelectionnee.NomBeneficiaire))
+                        {
+                            <div class="col-12">
+                                <hr>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="detail-item">
+                                    <label class="small text-muted">Bénéficiaire</label>
+                                    <p class="mb-0">@transactionSelectionnee.NomBeneficiaire</p>
+                                </div>
+                            </div>
+                            @if (!string.IsNullOrEmpty(transactionSelectionnee.CompteBeneficiaire))
+                            {
+                                <div class="col-md-6">
+                                    <div class="detail-item">
+                                        <label class="small text-muted">Compte bénéficiaire</label>
+                                        <p class="mb-0"><code>@transactionSelectionnee.CompteBeneficiaire</code></p>
+                                    </div>
+                                </div>
+                            }
+                        }
+                        <div class="col-12">
+                            <hr>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="detail-item p-3 bg-light rounded">
+                                <label class="small text-muted">Montant</label>
+                                <h3 class="mb-0 @(transactionSelectionnee.IsCredit ? "text-success" : "text-danger")">
+                                    @transactionSelectionnee.MontantFormate
+                                </h3>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="detail-item p-3 bg-light rounded">
+                                <label class="small text-muted">Solde après opération</label>
+                                <h4 class="mb-0 text-primary">@transactionSelectionnee.SoldeApres.ToString("N2") €</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-primary" @onclick='() => TelechargerRecu(transactionSelectionnee)' disabled>
+                        <i class="fas fa-download me-2"></i> Télécharger le reçu
+                    </button>
+                    <button type="button" class="btn btn-secondary" @onclick="FermerModalDetails">
+                        Fermer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string? Iban { get; set; }
+
+    private List<CompteResumeDto> comptes = new();
+    private List<TransactionDto> transactions = new();
+    private List<TransactionDto> transactionsFiltrees = new();
+    private List<TransactionDto> transactionsPaginees = new();
+    private TransactionDto? transactionSelectionnee;
+
+    // Statistiques
+    private int totalTransactions = 0;
+    private decimal totalCredits = 0;
+    private decimal totalDebits = 0;
+    private decimal soldeNet = 0;
+
+    // Filtres
+    private string compteSelectionne = string.Empty;
+    private DateTime? dateDebut = DateTime.Today.AddMonths(-1);
+    private DateTime? dateFin = DateTime.Today;
+    private string typeOperation = string.Empty;
+    private string motCle = string.Empty;
+    private decimal? montantMin = null;
+    private decimal? montantMax = null;
+
+    // Pagination et tri
+    private int pageActuelle = 0;
+    private int taillePage = 20;
+    private int totalPages = 0;
+    private string triActuel = "date-desc";
+    private string vueActuelle = "liste";
+
+    // États
+    private bool isLoading = true;
+    private bool afficherModalDetails = false;
+
+    private long clientId = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ChargerComptes();
+
+        if (!string.IsNullOrEmpty(Iban))
+        {
+            compteSelectionne = Iban;
+        }
+
+        await ChargerTransactions();
+    }
+
+    private async Task ChargerComptes()
+    {
+        try
+        {
+            comptes = await CompteService.GetComptesClientAsync(clientId);
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erreur lors du chargement des comptes: {ex.Message}");
+        }
+    }
+
+    private async Task ChargerTransactions()
+    {
+        try
+        {
+            isLoading = true;
+            transactions.Clear();
+
+            var comptesACharger = string.IsNullOrEmpty(compteSelectionne)
+                ? comptes
+                : comptes.Where(c => c.Iban == compteSelectionne).ToList();
+
+            foreach (var compte in comptesACharger)
+            {
+                var request = new HistoriqueRequest
+                {
+                    Iban = compte.Iban,
+                    DateDebut = dateDebut,
+                    DateFin = dateFin,
+                    TypeOperation = string.IsNullOrEmpty(typeOperation) ? null : typeOperation,
+                    Page = 0,
+                    Taille = 1000 // Charger toutes les transactions pour filtrage côté client
+                };
+
+                var historique = await VirementService.GetHistoriqueAsync(request);
+                transactions.AddRange(historique.Content);
+            }
+
+            AppliquerFiltres();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erreur lors du chargement des transactions: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void AppliquerFiltres()
+    {
+        transactionsFiltrees = transactions.ToList();
+
+        // Filtre par mot-clé
+        if (!string.IsNullOrWhiteSpace(motCle))
+        {
+            transactionsFiltrees = transactionsFiltrees.Where(t =>
+                t.Libelle.Contains(motCle, StringComparison.OrdinalIgnoreCase) ||
+                (t.LibelleComplement?.Contains(motCle, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (t.NomBeneficiaire?.Contains(motCle, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                t.Reference.Contains(motCle, StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+        }
+
+        // Filtre par montant
+        if (montantMin.HasValue)
+        {
+            transactionsFiltrees = transactionsFiltrees.Where(t => t.Montant >= montantMin.Value).ToList();
+        }
+
+        if (montantMax.HasValue)
+        {
+            transactionsFiltrees = transactionsFiltrees.Where(t => t.Montant <= montantMax.Value).ToList();
+        }
+
+        // Calculer les statistiques
+        CalculerStatistiques();
+
+        // Appliquer le tri
+        AppliquerTri();
+
+        // Réinitialiser la page
+        pageActuelle = 0;
+        AppliquerPagination();
+    }
+
+    private void AppliquerTri()
+    {
+        transactionsFiltrees = triActuel switch
+        {
+            "date-asc" => transactionsFiltrees.OrderBy(t => t.DateOperation).ToList(),
+            "date-desc" => transactionsFiltrees.OrderByDescending(t => t.DateOperation).ToList(),
+            "montant-asc" => transactionsFiltrees.OrderBy(t => t.Montant).ToList(),
+            "montant-desc" => transactionsFiltrees.OrderByDescending(t => t.Montant).ToList(),
+            "libelle" => transactionsFiltrees.OrderBy(t => t.Libelle).ToList(),
+            _ => transactionsFiltrees.OrderByDescending(t => t.DateOperation).ToList()
+        };
+
+        AppliquerPagination();
+    }
+
+    private void AppliquerPagination()
+    {
+        totalPages = (int)Math.Ceiling((double)transactionsFiltrees.Count / taillePage);
+        transactionsPaginees = transactionsFiltrees
+            .Skip(pageActuelle * taillePage)
+            .Take(taillePage)
+            .ToList();
+    }
+
+    private void ChangerPage(int nouvellePage)
+    {
+        if (nouvellePage >= 0 && nouvellePage < totalPages)
+        {
+            pageActuelle = nouvellePage;
+            AppliquerPagination();
+        }
+    }
+
+    private void CalculerStatistiques()
+    {
+        totalTransactions = transactionsFiltrees.Count;
+        totalCredits = transactionsFiltrees.Where(t => t.IsCredit).Sum(t => t.Montant);
+        totalDebits = transactionsFiltrees.Where(t => t.IsDebit).Sum(t => t.Montant);
+        soldeNet = totalCredits - totalDebits;
+    }
+
+    private async Task ReinitialiserFiltres()
+    {
+        compteSelectionne = string.Empty;
+        dateDebut = DateTime.Today.AddMonths(-1);
+        dateFin = DateTime.Today;
+        typeOperation = string.Empty;
+        motCle = string.Empty;
+        montantMin = null;
+        montantMax = null;
+        triActuel = "date-desc";
+        pageActuelle = 0;
+
+        await ChargerTransactions();
+    }
+
+    private async Task AppliquerPeriodeRapide(int jours)
+    {
+        dateDebut = DateTime.Today.AddDays(-jours);
+        dateFin = DateTime.Today;
+        await ChargerTransactions();
+    }
+
+    private async Task AppliquerMoisEnCours()
+    {
+        dateDebut = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+        dateFin = DateTime.Today;
+        await ChargerTransactions();
+    }
+
+    private async Task AppliquerMoisPrecedent()
+    {
+        var moisPrecedent = DateTime.Today.AddMonths(-1);
+        dateDebut = new DateTime(moisPrecedent.Year, moisPrecedent.Month, 1);
+        dateFin = new DateTime(moisPrecedent.Year, moisPrecedent.Month, DateTime.DaysInMonth(moisPrecedent.Year, moisPrecedent.Month));
+        await ChargerTransactions();
+    }
+
+    private async Task AppliquerAnneeEnCours()
+    {
+        dateDebut = new DateTime(DateTime.Today.Year, 1, 1);
+        dateFin = DateTime.Today;
+        await ChargerTransactions();
+    }
+
+    private async Task Actualiser()
+    {
+        await ChargerTransactions();
+        ToastService.ShowSuccess("Transactions actualisées");
+    }
+
+    private void OuvrirDetailsTransaction(TransactionDto transaction)
+    {
+        transactionSelectionnee = transaction;
+        afficherModalDetails = true;
+    }
+
+    private void FermerModalDetails()
+    {
+        afficherModalDetails = false;
+        transactionSelectionnee = null;
+    }
+
+    private void ExporterPDF()
+    {
+        ToastService.ShowInfo("Export PDF en cours de développement");
+    }
+
+    private void ExporterExcel()
+    {
+        ToastService.ShowInfo("Export Excel en cours de développement");
+    }
+
+    private void TelechargerRecu(TransactionDto transaction)
+    {
+        ToastService.ShowInfo("Téléchargement du reçu en cours de développement");
+    }
+
+    private string GetTypeIcon(string type) => type switch
+    {
+        "VIREMENT_EMIS" => "paper-plane",
+        "VIREMENT_RECU" => "inbox",
+        "VIREMENT_SEPA" => "exchange-alt",
+        "VIREMENT_INSTANTANE" => "bolt",
+        "PRELEVEMENT" => "file-invoice",
+        "PAIEMENT_CARTE" => "credit-card",
+        "RETRAIT_DAB" => "money-bill-wave",
+        "DEPOT_ESPECES" => "coins",
+        "DEPOT_CHEQUE" => "money-check",
+        "FRAIS_BANCAIRES" => "receipt",
+        _ => "exchange-alt"
+    };
+
+    private string GetTypeLibelle(string type) => type switch
+    {
+        "VIREMENT_EMIS" => "Virement émis",
+        "VIREMENT_RECU" => "Virement reçu",
+        "VIREMENT_SEPA" => "Virement SEPA",
+        "VIREMENT_INSTANTANE" => "Virement instantané",
+        "PRELEVEMENT" => "Prélèvement",
+        "PAIEMENT_CARTE" => "Paiement carte",
+        "RETRAIT_DAB" => "Retrait DAB",
+        "DEPOT_ESPECES" => "Dépôt espèces",
+        "DEPOT_CHEQUE" => "Dépôt chèque",
+        "FRAIS_BANCAIRES" => "Frais bancaires",
+        _ => type
+    };
+
+    private string GetTypeLibelleCourt(string type) => type switch
+    {
+        "VIREMENT_EMIS" => "Virement",
+        "VIREMENT_RECU" => "Virement",
+        "VIREMENT_SEPA" => "SEPA",
+        "VIREMENT_INSTANTANE" => "Instant",
+        "PRELEVEMENT" => "Prélèv.",
+        "PAIEMENT_CARTE" => "Carte",
+        "RETRAIT_DAB" => "Retrait",
+        "DEPOT_ESPECES" => "Dépôt",
+        "DEPOT_CHEQUE" => "Chèque",
+        "FRAIS_BANCAIRES" => "Frais",
+        _ => type
+    };
+
+    private string GetStatutColor(string statut) => statut switch
+    {
+        "EXECUTE" => "success",
+        "EN_ATTENTE" => "warning",
+        "REJETE" => "danger",
+        "ANNULE" => "secondary",
+        _ => "info"
+    };
+
+    private string GetStatutLibelle(string statut) => statut switch
+    {
+        "EXECUTE" => "Exécuté",
+        "EN_ATTENTE" => "En attente",
+        "REJETE" => "Rejeté",
+        "ANNULE" => "Annulé",
+        _ => statut
+    };
+}
+
+<style>
+    .historique-page {
+        animation: fadeIn 0.3s ease-in;
+    }
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .page-header {
+        padding: 1rem 0;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    /* ===== STATISTICS CARDS ===== */
+    .stat-card {
+        transition: all 0.3s ease;
+        border-radius: 12px;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .stat-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+    }
+
+    /* ===== FILTERS SECTION ===== */
+    .form-label {
+        font-weight: 500;
+        color: #495057;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-control, .form-select {
+        border-radius: 8px;
+        border: 1px solid #ced4da;
+        transition: all 0.2s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #3182ce;
+        box-shadow: 0 0 0 0.25rem rgba(49, 130, 206, 0.1);
+    }
+
+    .input-group-text {
+        background-color: #fff;
+        border: 1px solid #ced4da;
+        border-right: 0;
+    }
+
+    .form-control.border-start-0 {
+        border-left: 0;
+    }
+
+    .form-control.border-start-0:focus {
+        box-shadow: none;
+    }
+
+    .input-group:focus-within .input-group-text {
+        border-color: #3182ce;
+    }
+
+    /* ===== TRANSACTIONS TABLE ===== */
+    .transactions-table {
+        font-size: 0.95rem;
+    }
+
+    .transactions-table thead {
+        background-color: #f8f9fa;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .transactions-table th {
+        font-weight: 600;
+        color: #495057;
+        border-bottom: 2px solid #dee2e6;
+        padding: 1rem 0.75rem;
+    }
+
+    .transaction-row {
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .transaction-row:hover {
+        background-color: #f8f9fa;
+        transform: scale(1.01);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .transaction-row td {
+        padding: 1rem 0.75rem;
+        vertical-align: middle;
+    }
+
+    /* ===== TRANSACTION CARDS ===== */
+    .transaction-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border-radius: 12px;
+    }
+
+    .transaction-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .transaction-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    /* ===== BADGES ===== */
+    .badge {
+        padding: 0.4em 0.8em;
+        font-weight: 500;
+        border-radius: 6px;
+        font-size: 0.75rem;
+    }
+
+    .bg-secondary-subtle {
+        background-color: #e2e3e5 !important;
+        color: #41464b !important;
+    }
+
+    .text-secondary {
+        color: #6c757d !important;
+    }
+
+    .bg-success-subtle {
+        background-color: #d1f2eb !important;
+        color: #0f5132 !important;
+    }
+
+    .bg-danger-subtle {
+        background-color: #f8d7da !important;
+        color: #842029 !important;
+    }
+
+    .bg-primary-subtle {
+        background-color: #cfe2ff !important;
+        color: #084298 !important;
+    }
+
+    .bg-info-subtle {
+        background-color: #d1ecf1 !important;
+        color: #0c5460 !important;
+    }
+
+    /* ===== CHARTS PLACEHOLDER ===== */
+    .chart-placeholder {
+        height: 300px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 12px;
+    }
+
+    .chart-placeholder-small {
+        height: 200px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-radius: 12px;
+    }
+
+    /* ===== PAGINATION ===== */
+    .pagination {
+        margin-bottom: 0;
+    }
+
+    .page-link {
+        color: #3182ce;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        margin: 0 2px;
+        transition: all 0.2s ease;
+    }
+
+    .page-link:hover {
+        background-color: #e6f2ff;
+        border-color: #3182ce;
+        color: #2c5282;
+    }
+
+    .page-item.active .page-link {
+        background-color: #3182ce;
+        border-color: #3182ce;
+        color: white;
+    }
+
+    .page-item.disabled .page-link {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .btn-group-sm .btn {
+        padding: 0.25rem 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    /* ===== MODAL ===== */
+    .modal.show {
+        display: block;
+    }
+
+    .modal-content {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-header {
+        border-top-left-radius: 16px;
+        border-top-right-radius: 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .detail-item {
+        margin-bottom: 1rem;
+    }
+
+    .detail-item label {
+        display: block;
+        margin-bottom: 0.25rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .detail-item code {
+        background-color: #f8f9fa;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+    }
+
+    /* ===== CARDS ===== */
+    .card {
+        border-radius: 12px;
+        border: none;
+    }
+
+    .card-header {
+        background-color: #fff;
+        border-bottom: 1px solid #e9ecef;
+        font-weight: 600;
+    }
+
+    /* ===== VIEW TOGGLE ===== */
+    .btn-group .btn {
+        margin: 0;
+    }
+
+    .btn-group .btn:not(:last-child) {
+        border-right: none;
+    }
+
+    .btn-outline-primary.active {
+        background-color: #3182ce;
+        color: white;
+    }
+
+    /* ===== TABLE RESPONSIVE ===== */
+    .table-responsive {
+        border-radius: 12px;
+        overflow-x: auto;
+    }
+
+    .table-responsive::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .table-responsive::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+
+    /* ===== STICKY HEADER ===== */
+    .sticky-top {
+        position: sticky;
+        top: 0;
+        z-index: 1020;
+        background-color: #f8f9fa;
+    }
+
+    /* ===== LOADING STATE ===== */
+    .spinner-border {
+        width: 3rem;
+        height: 3rem;
+        border-width: 0.25em;
+    }
+
+    /* ===== EMPTY STATE ===== */
+    .text-center i {
+        opacity: 0.5;
+    }
+
+    /* ===== ANIMATIONS ===== */
+    @@keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .transaction-row {
+        animation: slideIn 0.3s ease-out;
+    }
+
+    .transaction-card {
+        animation: slideIn 0.3s ease-out;
+    }
+
+    /* ===== RESPONSIVE DESIGN ===== */
+    @@media (max-width: 768px) {
+        .stat-card .card-body {
+            padding: 1rem;
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+        }
+
+        .stat-icon i {
+            font-size: 1.5rem;
+        }
+
+        h3 {
+            font-size: 1.5rem;
+        }
+
+        .transactions-table {
+            font-size: 0.85rem;
+        }
+
+        .transactions-table th,
+        .transactions-table td {
+            padding: 0.5rem;
+        }
+
+        .page-header h1 {
+            font-size: 1.5rem;
+        }
+
+        .btn-group {
+            flex-direction: column;
+            width: 100%;
+        }
+
+        .btn-group .btn {
+            border-radius: 8px !important;
+            border-right: 1px solid #dee2e6 !important;
+            margin-bottom: 0.25rem;
+        }
+    }
+
+    /* ===== TEXT UTILITIES ===== */
+    .text-success {
+        color: #28a745 !important;
+    }
+
+    .text-danger {
+        color: #dc3545 !important;
+    }
+
+    .text-primary {
+        color: #3182ce !important;
+    }
+
+    .text-muted {
+        color: #6c757d !important;
+    }
+
+    /* ===== HOVER EFFECTS ===== */
+    .transaction-row:hover .btn-link {
+        color: #2c5282;
+    }
+
+    /* ===== FOCUS STATES ===== */
+    .btn:focus,
+    .form-control:focus,
+    .form-select:focus {
+        outline: 2px solid #3182ce;
+        outline-offset: 2px;
+    }
+
+    /* ===== PRINT STYLES ===== */
+    @@media print {
+        .btn,
+        .page-header .col-md-6:last-child,
+        .card-header button,
+        .pagination {
+            display: none !important;
+        }
+
+        .card {
+            box-shadow: none;
+            border: 1px solid #ddd;
+        }
+
+        .transaction-row:hover {
+            background-color: transparent;
+            transform: none;
+            box-shadow: none;
+        }
+    }
+
+    /* ===== ACCESSIBILITY ===== */
+    .btn-link:focus {
+        outline: 2px solid #3182ce;
+        outline-offset: 2px;
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: #3182ce;
+        box-shadow: 0 0 0 0.25rem rgba(49, 130, 206, 0.25);
+    }
+
+    /* ===== CUSTOM UTILITIES ===== */
+    .shadow-sm {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+    }
+
+    .shadow {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .shadow-lg {
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    /* ===== TABLE STRIPING ===== */
+    .table-hover tbody tr:hover {
+        background-color: rgba(49, 130, 206, 0.05);
+    }
+
+    /* ===== SCROLLBAR CUSTOM ===== */
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 5px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+
+    /* ===== TRANSITIONS ===== */
+    * {
+        transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* ===== BUTTON STATES ===== */
+    .btn-outline-primary:hover {
+        background-color: #3182ce;
+        border-color: #3182ce;
+        color: white;
+    }
+
+    .btn-outline-success:hover {
+        background-color: #28a745;
+        border-color: #28a745;
+        color: white;
+    }
+
+    /* ===== FORM STATES ===== */
+    .was-validated .form-control:valid {
+        border-color: #28a745;
+    }
+
+    .was-validated .form-control:invalid {
+        border-color: #dc3545;
+    }
+
+    /* ===== TOOLTIP ENHANCEMENT ===== */
+    [title] {
+        cursor: help;
+    }
+</style>

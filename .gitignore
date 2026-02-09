@@ -44,3 +44,4 @@ project.lock.json
 
 # Claude Code settings
 .claude/
+.pids/

@@ -1,0 +1,716 @@
+@page "/comptes"
+@page "/comptes/{iban}"
+@attribute [Authorize]
+@inject ICompteService CompteService
+@inject IVirementService VirementService
+@inject ICarteService CarteService
+@inject NavigationManager Navigation
+@inject IToastService ToastService
+
+<PageTitle>Mes Comptes - EuroBank</PageTitle>
+
+<div class="comptes-page">
+    <!-- En-tête de la page -->
+    <div class="page-header mb-4">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <h1 class="h3 mb-2">
+                    <i class="fas fa-university me-2 text-primary"></i>
+                    Mes Comptes Bancaires
+                </h1>
+                <p class="text-muted mb-0">Gérez l'ensemble de vos comptes en un seul endroit</p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <div class="d-flex justify-content-md-end gap-2 mt-3 mt-md-0">
+                    <button class="btn btn-outline-primary" @onclick="RefreshComptes">
+                        <i class="fas fa-sync-alt me-1"></i> Actualiser
+                    </button>
+                    <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/virements")'>
+                        <i class="fas fa-paper-plane me-1"></i> Nouveau virement
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(Iban))
+    {
+        <!-- Vue détaillée d'un compte spécifique -->
+        @if (compteSelectionne == null && isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Chargement...</span>
+                </div>
+            </div>
+        }
+        else if (compteSelectionne != null)
+        {
+            <div class="row g-4">
+                <!-- Informations du compte -->
+                <div class="col-lg-8">
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-4">
+                                <div>
+                                    <h4 class="mb-1">@compteSelectionne.Intitule</h4>
+                                    <p class="text-muted mb-0">@compteSelectionne.Iban</p>
+                                </div>
+                                <span class="badge bg-@GetStatusColor(compteSelectionne.Statut) fs-6">
+                                    @compteSelectionne.Statut
+                                </span>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="info-card p-3 rounded bg-light">
+                                        <small class="text-muted d-block mb-1">Solde actuel</small>
+                                        <h3 class="mb-0 @(compteSelectionne.Solde >= 0 ? "text-success" : "text-danger")">
+                                            @compteSelectionne.Solde.ToString("N2") €
+                                        </h3>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-card p-3 rounded bg-light">
+                                        <small class="text-muted d-block mb-1">Solde disponible</small>
+                                        <h3 class="mb-0 text-primary">
+                                            @compteSelectionne.SoldeDisponible.ToString("N2") €
+                                        </h3>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-card p-3 rounded bg-light">
+                                        <small class="text-muted d-block mb-1">Découvert autorisé</small>
+                                        <p class="mb-0 fw-semibold">@compteSelectionne.DecouvertAutorise.ToString("N2") €</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-card p-3 rounded bg-light">
+                                        <small class="text-muted d-block mb-1">Date d'ouverture</small>
+                                        <p class="mb-0 fw-semibold">@compteSelectionne.DateOuverture.ToString("dd/MM/yyyy")</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4">
+                                <h6 class="mb-2">Informations bancaires</h6>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <small class="text-muted d-block">IBAN</small>
+                                        <div class="d-flex align-items-center">
+                                            <code class="me-2">@compteSelectionne.Iban</code>
+                                            <button class="btn btn-sm btn-link" @onclick='() => CopyToClipboard(compteSelectionne.Iban)'>
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small class="text-muted d-block">BIC</small>
+                                        <div class="d-flex align-items-center">
+                                            <code class="me-2">@compteSelectionne.Bic</code>
+                                            <button class="btn btn-sm btn-link" @onclick='() => CopyToClipboard(compteSelectionne.Bic)'>
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4">
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo($"/virements?from={compteSelectionne.Iban}")'>
+                                        <i class="fas fa-paper-plane me-1"></i> Faire un virement
+                                    </button>
+                                    <button class="btn btn-outline-primary" @onclick='() => Navigation.NavigateTo($"/historique?iban={compteSelectionne.Iban}")'>
+                                        <i class="fas fa-history me-1"></i> Historique
+                                    </button>
+                                    <button class="btn btn-outline-secondary" @onclick='() => Navigation.NavigateTo("/comptes")'>
+                                        <i class="fas fa-arrow-left me-1"></i> Retour
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cartes bancaires associées -->
+                    @if (cartes != null && cartes.Any())
+                    {
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-white border-0 py-3">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-credit-card me-2 text-primary"></i>
+                                    Cartes bancaires associées
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    @foreach (var carte in cartes)
+                                    {
+                                        <div class="col-md-6">
+                                            <div class="carte-item p-3 rounded border">
+                                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                                    <div>
+                                                        <h6 class="mb-0">@carte.TypeCarteLibelle</h6>
+                                                        <small class="text-muted">@carte.NumeroCarteMasque</small>
+                                                    </div>
+                                                    <span class="badge bg-@(carte.IsActive ? "success" : "danger")">
+                                                        @carte.StatutLibelle
+                                                    </span>
+                                                </div>
+                                                <p class="small mb-0">Expire le: @carte.DateExpiration.ToString("MM/yyyy")</p>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Dernières transactions -->
+                <div class="col-lg-4">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white border-0 py-3">
+                            <h5 class="mb-0">
+                                <i class="fas fa-clock me-2 text-primary"></i>
+                                Dernières opérations
+                            </h5>
+                        </div>
+                        <div class="card-body p-0">
+                            @if (dernieresTransactions.Any())
+                            {
+                                <ul class="list-group list-group-flush">
+                                    @foreach (var transaction in dernieresTransactions)
+                                    {
+                                        <li class="list-group-item px-3 py-3">
+                                            <div class="d-flex justify-content-between align-items-start">
+                                                <div>
+                                                    <div class="fw-semibold small">@transaction.Libelle</div>
+                                                    <small class="text-muted">@transaction.DateOperation.ToString("dd/MM/yyyy")</small>
+                                                </div>
+                                                <span class="badge @(transaction.IsCredit ? "bg-success" : "bg-danger")">
+                                                    @transaction.MontantFormate
+                                                </span>
+                                            </div>
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                            else
+                            {
+                                <div class="text-center py-4 text-muted">
+                                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                                    <p class="small mb-0">Aucune opération récente</p>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <!-- Vue liste de tous les comptes -->
+        <div class="row mb-4">
+            <div class="col-lg-8">
+                <!-- Résumé financier -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <i class="fas fa-wallet fa-2x text-primary mb-2"></i>
+                                <h6 class="text-muted mb-1">Patrimoine total</h6>
+                                @if (isLoading)
+                                {
+                                    <div class="placeholder-glow">
+                                        <span class="placeholder col-8"></span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <h3 class="mb-0 text-primary">@soldeGlobal.ToString("N2") €</h3>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <i class="fas fa-university fa-2x text-success mb-2"></i>
+                                <h6 class="text-muted mb-1">Nombre de comptes</h6>
+                                <h3 class="mb-0 text-success">@comptesFiltres.Count</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body text-center">
+                                <i class="fas fa-chart-line fa-2x text-info mb-2"></i>
+                                <h6 class="text-muted mb-1">Comptes actifs</h6>
+                                <h3 class="mb-0 text-info">@comptesActifs</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtres et recherche -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white">
+                                        <i class="fas fa-search text-muted"></i>
+                                    </span>
+                                    <input type="text"
+                                           class="form-control border-start-0"
+                                           placeholder="Rechercher un compte..."
+                                           @bind="searchTerm"
+                                           @bind:event="oninput"
+                                           @onkeyup="FiltrerComptes" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <select class="form-select" @bind="filtreType" @bind:after="FiltrerComptes">
+                                    <option value="">Tous les types</option>
+                                    <option value="COURANT">Compte Courant</option>
+                                    <option value="EPARGNE">Livret d'Épargne</option>
+                                    <option value="LIVRET_A">Livret A</option>
+                                    <option value="LDD">LDD</option>
+                                    <option value="PEL">PEL</option>
+                                    <option value="PEA">PEA</option>
+                                    <option value="TITRE">Compte Titres</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Liste des comptes -->
+                @if (isLoading)
+                {
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Chargement...</span>
+                        </div>
+                    </div>
+                }
+                else if (!comptesFiltres.Any())
+                {
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h5>Aucun compte trouvé</h5>
+                            <p class="text-muted">Essayez de modifier vos critères de recherche</p>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <div class="row g-4">
+                        @foreach (var compte in comptesFiltres)
+                        {
+                            <div class="col-12">
+                                <div class="card border-0 shadow-sm compte-card" @onclick='() => VoirDetailsCompte(compte.Iban)'>
+                                    <div class="card-body">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-6">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="compte-icon me-3">
+                                                        <i class="fas fa-@GetCompteIcon(compte.TypeCompte) fa-2x text-primary"></i>
+                                                    </div>
+                                                    <div>
+                                                        <h5 class="mb-1">@compte.Intitule</h5>
+                                                        <p class="text-muted mb-0 small">
+                                                            <code>@compte.IbanFormate</code>
+                                                        </p>
+                                                        <span class="badge bg-secondary-subtle text-secondary mt-1">
+                                                            @compte.TypeCompteLibelle
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3 text-md-end mt-3 mt-md-0">
+                                                <small class="text-muted d-block mb-1">Solde actuel</small>
+                                                <h4 class="mb-0 @(compte.Solde >= 0 ? "text-success" : "text-danger")">
+                                                    @compte.Solde.ToString("N2") €
+                                                </h4>
+                                            </div>
+                                            <div class="col-md-3 text-md-end mt-3 mt-md-0">
+                                                <small class="text-muted d-block mb-1">Disponible</small>
+                                                <h5 class="mb-2 text-primary">@compte.SoldeDisponible.ToString("N2") €</h5>
+                                                <button class="btn btn-sm btn-outline-primary" @onclick:stopPropagation="true" @onclick='() => VoirDetailsCompte(compte.Iban)'>
+                                                    <i class="fas fa-eye me-1"></i> Détails
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Sidebar avec actions rapides -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm mb-4 sticky-sidebar">
+                    <div class="card-header bg-primary text-white border-0 py-3">
+                        <h5 class="mb-0">
+                            <i class="fas fa-bolt me-2"></i>
+                            Actions rapides
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary" @onclick='() => Navigation.NavigateTo("/virements")'>
+                                <i class="fas fa-paper-plane me-2"></i> Nouveau virement
+                            </button>
+                            <button class="btn btn-outline-primary" @onclick='() => Navigation.NavigateTo("/historique")'>
+                                <i class="fas fa-history me-2"></i> Historique complet
+                            </button>
+                            <button class="btn btn-outline-primary" @onclick='() => Navigation.NavigateTo("/cartes")'>
+                                <i class="fas fa-credit-card me-2"></i> Mes cartes
+                            </button>
+                            <button class="btn btn-outline-primary" disabled>
+                                <i class="fas fa-file-pdf me-2"></i> Télécharger RIB
+                            </button>
+                            <button class="btn btn-outline-primary" disabled>
+                                <i class="fas fa-chart-bar me-2"></i> Synthèse mensuelle
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-3">
+                        <h5 class="mb-0">
+                            <i class="fas fa-info-circle me-2 text-info"></i>
+                            Informations
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-0">
+                            <h6 class="alert-heading">
+                                <i class="fas fa-shield-alt me-1"></i>
+                                Sécurité
+                            </h6>
+                            <p class="small mb-0">
+                                Vos comptes sont protégés par une authentification forte et chiffrés selon les normes bancaires européennes.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string? Iban { get; set; }
+
+    private List<CompteResumeDto> comptes = new();
+    private List<CompteResumeDto> comptesFiltres = new();
+    private CompteDto? compteSelectionne;
+    private List<CarteDto> cartes = new();
+    private List<TransactionDto> dernieresTransactions = new();
+
+    private decimal soldeGlobal = 0;
+    private int comptesActifs = 0;
+    private bool isLoading = true;
+
+    private string searchTerm = string.Empty;
+    private string filtreType = string.Empty;
+
+    private long clientId = 1; // À récupérer du contexte d'authentification
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ChargerComptes();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(Iban))
+        {
+            await ChargerDetailsCompte(Iban);
+        }
+    }
+
+    private async Task ChargerComptes()
+    {
+        try
+        {
+            isLoading = true;
+            comptes = await CompteService.GetComptesClientAsync(clientId);
+            comptesFiltres = comptes;
+            soldeGlobal = comptes.Sum(c => c.Solde);
+            comptesActifs = comptes.Count(c => c.Statut == "ACTIF");
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erreur lors du chargement des comptes: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ChargerDetailsCompte(string iban)
+    {
+        try
+        {
+            isLoading = true;
+            compteSelectionne = await CompteService.GetCompteAsync(iban);
+
+            if (compteSelectionne != null)
+            {
+                // Charger les cartes associées
+                cartes = await CarteService.GetCartesCompteAsync(compteSelectionne.Id);
+
+                // Charger les dernières transactions
+                var historiqueRequest = new HistoriqueRequest
+                {
+                    Iban = iban,
+                    Page = 0,
+                    Taille = 10
+                };
+
+                var historique = await VirementService.GetHistoriqueAsync(historiqueRequest);
+                dernieresTransactions = historique.Content;
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowError($"Erreur lors du chargement des détails: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void FiltrerComptes()
+    {
+        comptesFiltres = comptes.Where(c =>
+        {
+            var matchSearch = string.IsNullOrEmpty(searchTerm) ||
+                             c.Intitule.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                             c.Iban.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                             c.NumeroCompte.Contains(searchTerm, StringComparison.OrdinalIgnoreCase);
+
+            var matchType = string.IsNullOrEmpty(filtreType) || c.TypeCompte == filtreType;
+
+            return matchSearch && matchType;
+        }).ToList();
+    }
+
+    private async Task RefreshComptes()
+    {
+        await ChargerComptes();
+        ToastService.ShowSuccess("Comptes actualisés");
+    }
+
+    private void VoirDetailsCompte(string iban)
+    {
+        Navigation.NavigateTo($"/comptes/{iban}");
+    }
+
+    private async Task CopyToClipboard(string text)
+    {
+        // Note: Nécessite JavaScript interop pour copier dans le presse-papier
+        // Pour l'instant, on affiche juste un message
+        ToastService.ShowSuccess("Copié dans le presse-papier!");
+    }
+
+    private string GetCompteIcon(string typeCompte) => typeCompte switch
+    {
+        "COURANT" => "wallet",
+        "EPARGNE" => "piggy-bank",
+        "LIVRET_A" => "book",
+        "LDD" => "leaf",
+        "PEL" => "home",
+        "PEA" => "chart-line",
+        "TITRE" => "briefcase",
+        _ => "university"
+    };
+
+    private string GetStatusColor(string statut) => statut switch
+    {
+        "ACTIF" => "success",
+        "BLOQUE" => "danger",
+        "FERME" => "secondary",
+        _ => "warning"
+    };
+}
+
+<style>
+    .comptes-page {
+        animation: fadeIn 0.3s ease-in;
+    }
+
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .page-header {
+        padding: 1rem 0;
+        border-bottom: 2px solid #f0f0f0;
+    }
+
+    .compte-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .compte-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+        border-color: #3182ce;
+    }
+
+    .compte-icon {
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #e6f2ff 0%, #cce5ff 100%);
+        border-radius: 12px;
+    }
+
+    .info-card {
+        transition: all 0.2s ease;
+    }
+
+    .info-card:hover {
+        background-color: #e6f2ff !important;
+    }
+
+    .carte-item {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        transition: transform 0.2s ease;
+    }
+
+    .carte-item:hover {
+        transform: scale(1.02);
+    }
+
+    .sticky-sidebar {
+        position: sticky;
+        top: 20px;
+    }
+
+    code {
+        background-color: #f8f9fa;
+        padding: 0.2rem 0.4rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+    }
+
+    .input-group-text {
+        border-right: 0;
+    }
+
+    .form-control.border-start-0 {
+        border-left: 0;
+    }
+
+    .form-control.border-start-0:focus {
+        box-shadow: none;
+        border-color: #ced4da;
+    }
+
+    .input-group:focus-within .input-group-text {
+        border-color: #86b7fe;
+    }
+
+    .badge {
+        padding: 0.5em 1em;
+        font-weight: 500;
+    }
+
+    .card {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .btn {
+        border-radius: 8px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .list-group-item {
+        border-left: 0;
+        border-right: 0;
+    }
+
+    .list-group-item:first-child {
+        border-top: 0;
+    }
+
+    .list-group-item:last-child {
+        border-bottom: 0;
+    }
+
+    .alert-info {
+        background-color: #e6f2ff;
+        border-color: #b3d9ff;
+        color: #004085;
+    }
+
+    @@media (max-width: 768px) {
+        .compte-card .row {
+            text-align: center;
+        }
+
+        .compte-card .compte-icon {
+            margin: 0 auto 1rem;
+        }
+
+        .sticky-sidebar {
+            position: relative;
+            top: 0;
+        }
+    }
+
+    /* Animation de chargement */
+    .spinner-border {
+        width: 3rem;
+        height: 3rem;
+    }
+
+    /* Amélioration des badges */
+    .bg-success {
+        background-color: #28a745 !important;
+    }
+
+    .bg-danger {
+        background-color: #dc3545 !important;
+    }
+
+    .bg-secondary-subtle {
+        background-color: #e2e3e5 !important;
+    }
+
+    .text-secondary {
+        color: #6c757d !important;
+    }
+</style>
